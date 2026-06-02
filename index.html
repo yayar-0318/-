@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实习投递管理器</title>
+<style>
+  /* ============ 颜色变量：奶黄暖色系 ============ */
+  :root{
+    --bg:#FBF5E6;
+    --panel:#FFFAEF;
+    --panel-2:#F5EDD8;
+    --line:#E6D5B5;
+    --ink:#2C1A0E;
+    --muted:#7A5C35;
+    --faint:#B09070;
+    --accent:#C89520;
+    --accent-deep:#A87510;
+    --accent-light:rgba(200,149,32,.12);
+    --green:#5A8A5A;
+    --red:#C04840;
+    --amber:#D49015;
+    --blue:#4A7898;
+    --grey-row:#F2EAD5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(900px 500px at 80% -5%, rgba(200,149,32,.10), transparent),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Noto Serif SC",Georgia,"Songti SC",serif;
+    line-height:1.6;padding:32px 20px;min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:28px;font-weight:700;letter-spacing:.5px;margin-bottom:4px}
+  h1 .dot{color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px;font-family:system-ui,sans-serif}
+
+  /* 统计条 */
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+  .stat{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px 18px;min-width:120px;flex:1;
+    box-shadow:0 2px 8px rgba(180,130,40,.07);
+  }
+  .stat .n{font-size:26px;font-weight:700;color:var(--accent);font-family:system-ui,sans-serif}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px;font-family:system-ui,sans-serif}
+
+  /* 录入卡 */
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:22px;margin-bottom:24px;
+    box-shadow:0 2px 10px rgba(180,130,40,.07);
+  }
+  .card h2{font-size:16px;margin-bottom:16px;font-weight:600;color:var(--ink)}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field.full{grid-column:1/-1}
+  label{font-size:12px;color:var(--muted);font-family:system-ui,sans-serif;letter-spacing:.3px}
+  input,select,textarea{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:9px;
+    color:var(--ink);padding:10px 12px;font-size:14px;font-family:system-ui,sans-serif;
+    outline:none;transition:border-color .15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+  textarea{resize:vertical;min-height:70px}
+  .btn{
+    background:var(--accent);color:#fff;border:none;border-radius:9px;
+    padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;
+    font-family:system-ui,sans-serif;transition:background .15s;
+  }
+  .btn:hover{background:var(--accent-deep)}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .btn.ghost:hover{color:var(--ink);border-color:var(--accent)}
+  .row-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+
+  /* 工具条 */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .toolbar select,.toolbar input{padding:8px 11px;font-size:13px}
+  .spacer{flex:1}
+  .tip{font-size:12px;color:var(--faint);font-family:system-ui,sans-serif}
+
+  /* 提醒横幅 */
+  .revive-banner{
+    background:rgba(212,144,21,.1);border:1px solid rgba(212,144,21,.3);
+    border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px;
+    color:var(--amber);font-family:system-ui,sans-serif;display:none;
+  }
+  .revive-banner.show{display:block}
+
+  /* 表格 */
+  .tbl{width:100%;border-collapse:collapse;font-family:system-ui,sans-serif;font-size:13px}
+  .tbl th{
+    text-align:left;padding:11px 12px;color:var(--muted);font-weight:600;
+    border-bottom:1px solid var(--line);font-size:12px;cursor:pointer;user-select:none;white-space:nowrap;
+  }
+  .tbl th:hover{color:var(--accent)}
+  .tbl td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tbl tr.dim{background:var(--grey-row);color:var(--faint)}
+  .tbl tr.dim .company{color:var(--muted)}
+  .tbl tr.revive{box-shadow:inset 3px 0 0 var(--amber)}
+  .company{font-weight:700;color:var(--ink);font-family:"Noto Serif SC",serif}
+  .pos{color:var(--muted);font-size:12px;margin-top:2px}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+  .b-dir{background:rgba(74,120,152,.12);color:var(--blue)}
+  .b-resume{background:rgba(90,138,90,.12);color:var(--green)}
+  select.status{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:7px;
+    color:var(--ink);padding:5px 8px;font-size:12px;font-family:system-ui,sans-serif;cursor:pointer;
+  }
+  .meta{font-size:11px;color:var(--faint);margin-top:4px}
+  .stale-tag{color:var(--amber);font-size:11px;font-weight:600}
+  .del{color:var(--faint);cursor:pointer;font-size:16px;background:none;border:none;padding:2px 6px}
+  .del:hover{color:var(--red)}
+  .empty{text-align:center;color:var(--faint);padding:50px;font-family:system-ui,sans-serif}
+
+  /* 同步状态指示 */
+  .sync-dot{
+    display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--green);margin-right:6px;vertical-align:middle;
+  }
+  .sync-dot.err{background:var(--red)}
+  .sync-dot.loading{background:var(--amber);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .sync-info{font-size:12px;color:var(--faint);font-family:system-ui,sans-serif;display:flex;align-items:center;gap:4px}
+
+  /* ============ 弹窗：每日鼓励 ============ */
+  .modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(44,26,14,.45);
+    display:flex;align-items:center;justify-content:center;
+    z-index:9999;padding:20px;
+    animation:fadeOverlay .3s ease;
+  }
+  @keyframes fadeOverlay{from{opacity:0}to{opacity:1}}
+  .modal-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:24px;
+    padding:36px 32px 28px;
+    max-width:420px;width:100%;
+    text-align:center;
+    box-shadow:0 20px 60px rgba(44,26,14,.18);
+    animation:popIn .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+  .avatar{
+    width:110px;height:110px;border-radius:50%;
+    margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;font-weight:700;
+    font-family:"Noto Serif SC",serif;
+    color:#fff;
+    box-shadow:0 4px 16px rgba(0,0,0,.15);
+    overflow:hidden;
+  }
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  .member-name{
+    font-size:13px;color:var(--muted);letter-spacing:2px;
+    font-family:system-ui,sans-serif;margin-bottom:14px;text-transform:uppercase;
+  }
+  .quote-text{
+    font-size:16px;line-height:1.8;color:var(--ink);
+    font-family:"Noto Serif SC",Georgia,serif;
+    margin-bottom:12px;
+    position:relative;
+    padding:0 8px;
+  }
+  .quote-text::before{
+    content:'\201C';
+    font-size:48px;color:var(--accent);opacity:.35;
+    position:absolute;top:-14px;left:-4px;
+    font-family:Georgia,serif;line-height:1;
+  }
+  .quote-attr{
+    font-size:12px;color:var(--faint);
+    font-family:system-ui,sans-serif;
+    margin-bottom:24px;
+  }
+  .modal-btn{
+    background:var(--accent);color:#fff;border:none;
+    border-radius:12px;padding:13px 32px;
+    font-size:14px;font-weight:700;cursor:pointer;
+    font-family:system-ui,sans-serif;
+    transition:background .15s, transform .1s;
+    width:100%;
+  }
+  .modal-btn:hover{background:var(--accent-deep);transform:translateY(-1px)}
+  .modal-skip{
+    display:block;margin-top:12px;font-size:12px;color:var(--faint);
+    cursor:pointer;font-family:system-ui,sans-serif;
+    background:none;border:none;
+    transition:color .15s;
+  }
+  .modal-skip:hover{color:var(--muted)}
+
+  /* 设置提示卡 */
+  .setup-card{
+    background:rgba(200,149,32,.08);border:1px solid rgba(200,149,32,.3);
+    border-radius:12px;padding:14px 18px;margin-bottom:20px;
+    font-size:13px;font-family:system-ui,sans-serif;color:var(--muted);
+    display:none;
+  }
+  .setup-card.show{display:block}
+  .setup-card code{background:var(--panel-2);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--accent-deep)}
+
+  @media(max-width:760px){
+    .grid{grid-template-columns:1fr}
+    .stats{gap:8px}
+    .stat{min-width:calc(50% - 6px)}
+    .tbl{font-size:12px}
+    .modal-card{padding:28px 20px 22px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 输入名字界面 ============ -->
+<div class="modal-overlay" id="loginOverlay" style="display:none">
+  <div class="modal-card" style="max-width:360px">
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px">实习投递管理器<span style="color:var(--accent)">.</span></div>
+    <div style="font-size:13px;color:var(--muted);font-family:system-ui,sans-serif;margin-bottom:20px">输入你的名字，用来区分不同的人的记录</div>
+    <div style="display:flex;flex-direction:column;gap:10px;text-align:left">
+      <label style="font-size:12px;color:var(--muted)">名字</label>
+      <input id="login-user" placeholder="给自己起个名字，如 yayar" autocomplete="off">
+    </div>
+    <div id="login-msg" style="font-size:12px;color:var(--red);font-family:system-ui,sans-serif;margin-top:10px;min-height:16px"></div>
+    <button class="modal-btn" onclick="doSetName()" style="margin-top:6px">进入</button>
+  </div>
+</div>
+
+<!-- ============ 鼓励弹窗 ============ -->
+<div class="modal-overlay" id="modalOverlay" style="display:none">
+  <div class="modal-card">
+    <div class="avatar" id="modalAvatar"></div>
+    <div class="member-name" id="modalName"></div>
+    <div class="quote-text" id="modalQuote"></div>
+    <div class="quote-attr" id="modalAttr"></div>
+    <button class="modal-btn" onclick="closeModal()">开始今天的努力 →</button>
+    <button class="modal-skip" onclick="closeModal()">先进去看看</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+    <div>
+      <h1>实习投递管理器<span class="dot">.</span></h1>
+      <p class="sub">投完即录 · 手机电脑同步 · 超时变灰 · 把值得再争取的挑出来</p>
+    </div>
+    <div class="sub" id="userBar" style="display:none;text-align:right">
+      <span id="userName"></span>
+      <button class="btn ghost" onclick="doLogout()" style="padding:5px 12px;margin-left:8px;font-size:12px">换名字</button>
+    </div>
+  </div>
+
+  <!-- 未配置 Supabase 时的提示 -->
+  <div class="setup-card" id="setupCard">
+    ⚙️ 当前使用本地存储（离线模式）。如需手机电脑同步，请填写页面顶部 JS 中的
+    <code>SUPABASE_URL</code> 和 <code>SUPABASE_KEY</code>，并在 Supabase 执行
+    <code>sql/internship_setup.sql</code>。
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <!-- 录入卡 -->
+  <div class="card">
+    <h2>＋ 记录一次投递</h2>
+    <div class="grid">
+      <div class="field">
+        <label>公司名称</label>
+        <input id="f-company" placeholder="如：美团">
+      </div>
+      <div class="field">
+        <label>岗位名称</label>
+        <input id="f-position" placeholder="如：AI产品实习生">
+      </div>
+      <div class="field">
+        <label>投递渠道</label>
+        <select id="f-channel">
+          <option value="">— 选择 —</option>
+          <option>BOSS直聘</option><option>实习僧</option><option>牛客</option>
+          <option>公司官网</option><option>智联招聘</option><option>前程无忧</option>
+          <option>猎聘</option><option>内推</option><option>其他</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>求职方向</label>
+        <select id="f-direction">
+          <option value="">— 选择 —</option>
+          <option>产品</option><option>AI产品</option><option>数据/运营</option>
+          <option>药企医学部</option><option>卫生政策</option><option>其他</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>用了哪份简历</label>
+        <select id="f-resume">
+          <option value="">— 选择 —</option>
+          <option>简历1</option><option>简历2</option><option>简历3</option>
+          <option>简历4</option><option>简历5</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>截止日期（可选）</label>
+        <input id="f-deadline" type="date">
+      </div>
+      <div class="field full">
+        <label>简历内容 / 备注（粘贴这次用的简历重点或岗位JD）</label>
+        <textarea id="f-notes" placeholder="把这次投的简历重点、或岗位JD粘进来，方便以后回看…"></textarea>
+      </div>
+    </div>
+    <div class="row-actions">
+      <button class="btn" onclick="addApp()">记录投递</button>
+      <div class="sync-info" id="syncInfo"><span class="sync-dot loading" id="syncDot"></span><span id="syncText">连接中…</span></div>
+    </div>
+  </div>
+
+  <!-- 提醒横幅 -->
+  <div class="revive-banner" id="reviveBanner"></div>
+
+  <!-- 工具条 -->
+  <div class="toolbar">
+    <select id="filter-status" onchange="render()">
+      <option value="">全部状态</option>
+      <option>已投递</option><option>笔试中</option><option>面试中</option>
+      <option>已收offer</option><option>已被拒</option>
+    </select>
+    <select id="filter-dir" onchange="render()">
+      <option value="">全部方向</option>
+      <option>产品</option><option>AI产品</option><option>数据/运营</option>
+      <option>药企医学部</option><option>卫生政策</option><option>其他</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-family:system-ui,sans-serif;font-size:13px;color:var(--muted)">
+      <input type="checkbox" id="only-revive" onchange="render()" style="width:auto;accent-color:var(--accent)"> 只看「值得再争取」
+    </label>
+    <span class="spacer"></span>
+    <button class="btn ghost" onclick="exportData()">导出备份</button>
+    <label class="btn ghost" style="cursor:pointer">导入<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+  </div>
+
+  <div class="card" style="padding:8px 8px 0">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th onclick="sortBy('company')">公司 / 岗位</th>
+          <th onclick="sortBy('direction')">方向</th>
+          <th onclick="sortBy('resume')">简历</th>
+          <th onclick="sortBy('channel')">渠道</th>
+          <th onclick="sortBy('appliedAt')">投递时间</th>
+          <th onclick="sortBy('status')">状态</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">还没有投递记录，在上面记录第一条吧。✨</div>
+  </div>
+
+  <p class="tip" style="margin-top:12px">
+    超过 <b id="staleDays">14</b> 天没更新的「已投递」会自动变灰并标记；被拒的也会变灰。数据通过 Supabase 实时同步，手机电脑可同时使用。
+  </p>
+</div>
+
+<script>
+/* ============================================================
+   ⚙️  配置区 — 填入你的 Supabase 信息后即可跨设备同步
+   1. 去 supabase.com 新建项目
+   2. 在 Supabase SQL Editor 运行 sql/internship_setup.sql
+   3. 把下面两个值替换成你的项目信息
+   ============================================================ */
+const SUPABASE_URL  = 'https://elcshkwpsoxuqorhefgi.supabase.co';   // 例: https://xxxx.supabase.co
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsY3Noa3dwc294dXFvcmhlZmdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNjMxMDIsImV4cCI6MjA5NTkzOTEwMn0.GnfCoBDUGxKpj1L4yaKeyqHxeBZxjCR0H6P8RE3Wx4U'; // anon public key
+
+const TABLE = 'internship_apps';
+const LS_KEY = 'internship_apps_v1';
+const STALE_DAYS = 14;
+
+/* ============================================================
+   🖼️  图片设置 —— 自动读取 images/ 文件夹里的所有图片
+   你以后只要往 images/ 文件夹里丢图 / 删图，网页会自动更新，
+   不用改文件名、不用改这里的代码。
+   只需把下面三行填成你自己的仓库信息（一次）：
+   ============================================================ */
+const GH_OWNER  = 'yayar-0318';        // 你的 GitHub 用户名
+const GH_REPO   = '-';                 // 你这个仓库的名字（就是一个短横线）
+const GH_BRANCH = 'main';              // 分支，一般是 main
+const IMAGES_DIR = 'images';           // 存图片的文件夹名
+
+// 自动从 GitHub 读取图片列表（失败时用下面这个手动后备清单）
+let IMAGES = [];
+const IMAGES_FALLBACK = [
+  // 如果自动读取失败，可在这里手动写： 'images/xxx.jpg',
+];
+
+async function loadImages(){
+  try{
+    const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${IMAGES_DIR}?ref=${GH_BRANCH}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('api '+res.status);
+    const files = await res.json();
+    IMAGES = files
+      .filter(f => f.type==='file' && /\.(jpe?g|png|webp|gif)$/i.test(f.name))
+      .map(f => f.download_url);
+  }catch(e){
+    console.warn('图片自动读取失败，改用后备清单：', e);
+    IMAGES = IMAGES_FALLBACK.slice();
+  }
+}
+
+/* ============================================================
+   🎵  歌词清单 —— 想加/删歌词，只改这里
+   每条格式：{ song:'歌名', kr:'韩文', cn:'中文翻译' }
+   图片和歌词各自随机，不用一一对应
+   ============================================================ */
+const LYRICS = [
+  { song:'영웅 (Kick It)',       kr:'나의 영웅',                  cn:'我的英雄' },
+  { song:'Highway to Heaven',     kr:'We on the highway to heaven', cn:'我们正走在通往天堂的路上' },
+  { song:'Superhuman',            kr:'I\'m a superhuman',          cn:'我是超人' },
+  { song:'질주 (2 Baddies)',      kr:'계속 질주',                  cn:'继续向前狂奔' },
+  { song:'Sticker',               kr:'내 맘대로 가',               cn:'照我心意往前走' },
+  { song:'Regular',               kr:'흔들림 없이',                cn:'毫不动摇' },
+  { song:'Simon Says',            kr:'내 길은 내가 정해',          cn:'我的路我自己定' },
+  { song:'Fact Check',            kr:'나는 나야',                  cn:'我还是我' },
+];
+
+/* ============ Supabase 初始化 + 登录 ============ */
+let supabase = null;
+let useCloud = false;
+let currentUser = null;
+
+// 动态加载一个脚本
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src=src; s.onload=resolve; s.onerror=()=>reject(new Error('load fail '+src));
+    document.head.appendChild(s);
+  });
+}
+
+// 后台加载 Supabase 库并连接（失败也不影响 app 本地使用）
+async function startCloud(){
+  if(SUPABASE_URL === 'YOUR_SUPABASE_URL' || !SUPABASE_URL){
+    document.getElementById('setupCard').classList.add('show');
+    setSyncStatus('offline','离线模式（仅本机）');
+    return;
+  }
+  setSyncStatus('loading','正在连接…');
+  // 多个 CDN 依次尝试，国内镜像优先
+  const sources = [
+    'https://registry.npmmirror.com/@supabase/supabase-js/2.45.4/files/dist/umd/supabase.js',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+    'https://unpkg.com/@supabase/supabase-js@2'
+  ];
+  let ok = false;
+  for(const src of sources){
+    try{ await loadScript(src); if(window.supabase){ ok=true; break; } }
+    catch(e){ /* 换下一个 */ }
+  }
+  if(!ok){ setSyncStatus('err','同步库连不上（仅本机可用）'); return; }
+  try{
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    useCloud = true;
+    await loadCloud();
+    subscribeRealtime();
+  }catch(e){
+    setSyncStatus('err','连接失败（仅本机可用）');
+    console.error(e);
+  }
+}
+
+const NAME_KEY = 'internship_owner_name';
+
+// 启动：有名字直接进，没名字弹输入框。无论如何 app 都会正常打开
+function checkAuth(){
+  currentUser = localStorage.getItem(NAME_KEY) || '';
+  if(currentUser){
+    enterApp();
+  } else {
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('login-user').focus();
+  }
+}
+
+function loginMsg(t, isErr){
+  const el = document.getElementById('login-msg');
+  el.style.color = isErr ? 'var(--red)' : 'var(--green)';
+  el.textContent = t;
+}
+
+function doSetName(){
+  const name = document.getElementById('login-user').value.trim();
+  if(!name){ loginMsg('请输入名字', true); return; }
+  currentUser = name;
+  localStorage.setItem(NAME_KEY, name);
+  document.getElementById('loginOverlay').style.display = 'none';
+  enterApp();
+}
+
+function doLogout(){          // 「换名字」：清掉名字重新输入
+  localStorage.removeItem(NAME_KEY);
+  location.reload();
+}
+
+// 进入 app：显示名字、弹鼓励、后台同步（同步失败也不影响使用）
+function enterApp(){
+  document.getElementById('userBar').style.display = 'block';
+  document.getElementById('userName').textContent = '👤 ' + currentUser;
+  loadImages().then(showModal);
+  startCloud();   // 后台连接，连不上也不影响本地使用
+}
+
+function setSyncStatus(state, text){
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  dot.className = 'sync-dot' + (state==='err'?' err':state==='loading'?' loading':'');
+  txt.textContent = text;
+}
+
+/* ============ 本地缓存 ============ */
+let apps = [];
+let sortKey = 'appliedAt', sortAsc = false;
+
+function loadLocal(){
+  try{ apps = JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+  catch(e){ apps = []; }
+}
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(apps)); }
+  catch(e){}
+}
+
+/* ============ 云端 CRUD ============ */
+async function loadCloud(){
+  if(!supabase) return;
+  // 只读自己名字下的记录
+  const {data, error} = await supabase.from(TABLE)
+    .select('*').eq('owner', currentUser).order('applied_at', {ascending:false});
+  if(error){ setSyncStatus('err','读取失败'); console.error(error); return; }
+  apps = (data||[]).map(fromDB);
+  saveLocal();
+  setSyncStatus('ok','已同步');
+  render();
+}
+
+function toDB(a){
+  const row = {
+    id: a.id,
+    company: a.company,
+    position: a.position||null,
+    channel: a.channel||null,
+    direction: a.direction||null,
+    resume: a.resume||null,
+    deadline: a.deadline||null,
+    notes: a.notes||null,
+    status: a.status,
+    applied_at: a.appliedAt,
+    updated_at: a.updatedAt
+  };
+  row.owner = currentUser;   // 标记这条记录属于谁（名字）
+  return row;
+}
+function fromDB(r){
+  return {
+    id: r.id,
+    company: r.company,
+    position: r.position||'',
+    channel: r.channel||'',
+    direction: r.direction||'',
+    resume: r.resume||'',
+    deadline: r.deadline||'',
+    notes: r.notes||'',
+    status: r.status||'已投递',
+    appliedAt: r.applied_at,
+    updatedAt: r.updated_at
+  };
+}
+
+/* ============ 实时订阅 ============ */
+function subscribeRealtime(){
+  if(!supabase) return;
+  supabase.channel('internship_apps_changes')
+    .on('postgres_changes', {event:'*', schema:'public', table:TABLE}, ()=>{
+      loadCloud();
+    })
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED') setSyncStatus('ok','已同步（实时）');
+    });
+}
+
+/* ============ 增删改 ============ */
+function now(){ return new Date().toISOString(); }
+
+async function addApp(){
+  const company = document.getElementById('f-company').value.trim();
+  const position = document.getElementById('f-position').value.trim();
+  if(!company){ alert('请至少填写公司名称'); return; }
+  const a = {
+    id: Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    company, position,
+    channel: document.getElementById('f-channel').value,
+    direction: document.getElementById('f-direction').value,
+    resume: document.getElementById('f-resume').value,
+    deadline: document.getElementById('f-deadline').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    status: '已投递',
+    appliedAt: now(),
+    updatedAt: now()
+  };
+  apps.push(a);
+  saveLocal(); render();
+  clearForm();
+
+  if(useCloud && supabase){
+    setSyncStatus('loading','保存中…');
+    const {error} = await supabase.from(TABLE).insert(toDB(a));
+    if(error){ setSyncStatus('err','保存失败'); console.error(error); }
+    else setSyncStatus('ok','已同步');
+  }
+}
+
+async function changeStatus(id, val){
+  const a = apps.find(x=>x.id===id);
+  if(!a) return;
+  a.status = val; a.updatedAt = now();
+  saveLocal(); render();
+
+  if(useCloud && supabase){
+    await supabase.from(TABLE).update({status:val, updated_at:a.updatedAt}).eq('id',id);
+  }
+}
+
+async function delApp(id){
+  if(!confirm('确定删除这条记录？')) return;
+  apps = apps.filter(x=>x.id!==id);
+  saveLocal(); render();
+
+  if(useCloud && supabase){
+    await supabase.from(TABLE).delete().eq('id',id);
+  }
+}
+
+function clearForm(){
+  ['f-company','f-position','f-notes','f-deadline'].forEach(id=>document.getElementById(id).value='');
+  ['f-channel','f-direction','f-resume'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  document.getElementById('f-company').focus();
+}
+
+/* ============ 工具函数 ============ */
+function fmt(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function daysSince(iso){
+  return Math.floor((Date.now()-new Date(iso).getTime())/86400000);
+}
+function isDim(a){
+  if(a.status==='已被拒') return true;
+  if(a.status==='已投递' && daysSince(a.updatedAt)>=STALE_DAYS) return true;
+  return false;
+}
+function isRevive(a){
+  return a.status==='已投递' && daysSince(a.updatedAt)>=STALE_DAYS;
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ============ 排序 ============ */
+function sortBy(k){
+  if(sortKey===k) sortAsc=!sortAsc; else{sortKey=k;sortAsc=true;}
+  render();
+}
+
+/* ============ 渲染 ============ */
+function render(){
+  const fS = document.getElementById('filter-status').value;
+  const fD = document.getElementById('filter-dir').value;
+  const onlyR = document.getElementById('only-revive').checked;
+  let list = apps.filter(a=>{
+    if(fS && a.status!==fS) return false;
+    if(fD && a.direction!==fD) return false;
+    if(onlyR && !isRevive(a)) return false;
+    return true;
+  });
+  list.sort((x,y)=>{
+    let vx=x[sortKey]||'', vy=y[sortKey]||'';
+    if(vx<vy) return sortAsc?-1:1;
+    if(vx>vy) return sortAsc?1:-1;
+    return 0;
+  });
+
+  const tb = document.getElementById('tbody');
+  tb.innerHTML='';
+  document.getElementById('empty').style.display = list.length?'none':'block';
+  const statuses = ['已投递','笔试中','面试中','已收offer','已被拒'];
+  list.forEach(a=>{
+    const tr = document.createElement('tr');
+    if(isDim(a)) tr.className='dim';
+    if(isRevive(a)) tr.className+=' revive';
+    const dimNote = isRevive(a)
+      ? `<div class="stale-tag">已 ${daysSince(a.updatedAt)} 天无更新 · 要再争取吗？</div>` : '';
+    tr.innerHTML=`
+      <td>
+        <div class="company">${esc(a.company)}</div>
+        <div class="pos">${esc(a.position||'')}</div>
+        ${a.notes?`<div class="meta" title="${esc(a.notes)}">📝 ${esc(a.notes.slice(0,40))}${a.notes.length>40?'…':''}</div>`:''}
+      </td>
+      <td>${a.direction?`<span class="badge b-dir">${esc(a.direction)}</span>`:'—'}</td>
+      <td>${a.resume?`<span class="badge b-resume">${esc(a.resume)}</span>`:'—'}</td>
+      <td>${esc(a.channel||'—')}</td>
+      <td>${fmt(a.appliedAt)}${dimNote}</td>
+      <td>
+        <select class="status" onchange="changeStatus('${a.id}',this.value)">
+          ${statuses.map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td><button class="del" onclick="delApp('${a.id}')" title="删除">✕</button></td>
+    `;
+    tb.appendChild(tr);
+  });
+  renderStats();
+  renderRevive();
+}
+
+function renderStats(){
+  const total = apps.length;
+  const active = apps.filter(a=>['笔试中','面试中'].includes(a.status)).length;
+  const offer = apps.filter(a=>a.status==='已收offer').length;
+  const revive = apps.filter(isRevive).length;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="n">${total}</div><div class="l">总投递</div></div>
+    <div class="stat"><div class="n">${active}</div><div class="l">进行中（笔试/面试）</div></div>
+    <div class="stat"><div class="n">${offer}</div><div class="l">已收 offer 🎉</div></div>
+    <div class="stat"><div class="n">${revive}</div><div class="l">值得再争取</div></div>
+  `;
+}
+function renderRevive(){
+  const n = apps.filter(isRevive).length;
+  const b = document.getElementById('reviveBanner');
+  if(n>0){
+    b.className='revive-banner show';
+    b.innerHTML=`⏳ 有 <b>${n}</b> 个岗位投出去超过 ${STALE_DAYS} 天没动静了。勾选上方「只看值得再争取」，决定要不要重新出击。`;
+  } else b.className='revive-banner';
+}
+
+/* ============ 导入导出 ============ */
+function exportData(){
+  const blob = new Blob([JSON.stringify(apps,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`投递备份_${fmt(now())}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+async function importData(e){
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = async ()=>{
+    try{
+      const data = JSON.parse(r.result);
+      if(!Array.isArray(data)){ alert('文件格式不对'); return; }
+      apps = data; saveLocal(); render();
+      if(useCloud && supabase){
+        setSyncStatus('loading','上传中…');
+        const rows = data.map(toDB);
+        const {error} = await supabase.from(TABLE).upsert(rows, {onConflict:'id'});
+        if(error){ setSyncStatus('err','上传失败'); return; }
+        setSyncStatus('ok','已同步');
+      }
+      alert('导入成功');
+    }catch(err){ alert('读取失败：'+err.message); }
+  };
+  r.readAsText(file);
+}
+
+/* ============ 弹窗逻辑 ============ */
+function showModal(){
+  const av = document.getElementById('modalAvatar');
+  if(IMAGES.length){
+    const img = IMAGES[Math.floor(Math.random()*IMAGES.length)];
+    av.style.background = 'var(--panel-2)';
+    av.innerHTML = `<img src="${img}" alt="" onerror="this.parentNode.innerHTML='♪'">`;
+  } else {
+    av.innerHTML = '♪';
+  }
+  const l = LYRICS[Math.floor(Math.random()*LYRICS.length)];
+  document.getElementById('modalName').textContent = 'NCT 127';
+  document.getElementById('modalQuote').textContent = l.kr;
+  document.getElementById('modalAttr').innerHTML = `<div style="font-size:15px;color:var(--ink);margin-bottom:6px">${l.cn}</div>♪ 《${l.song}》`;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+function closeModal(){
+  const overlay = document.getElementById('modalOverlay');
+  overlay.style.animation = 'fadeOverlay .2s ease reverse';
+  setTimeout(()=>{ overlay.style.display='none'; },180);
+}
+
+/* ============ 启动 ============ */
+document.getElementById('staleDays').textContent = STALE_DAYS;
+loadLocal();
+render();
+checkAuth();   // 立刻弹「输入名字」框 / 进入 app；Supabase 在后台连，绝不卡页面
+</script>
+</body>
+</html>
